@@ -36,11 +36,16 @@
 select * from customers;
 select * from product;
 select * from sales;
-/*
-for marketing campaign, team want to have # of customer who belong to the below three categories in all regions:
+/* for marketing campaign, team want to have # of customer who belong to the below three categories in all regions:
 1. less than 36 years old
 2. Between 36 to 54 years
-3. Above 54 years old
-*/
+3. Above 54 years old */
+
+select region, case when age > 54 then 'category 3'
+                    when age < 36 then 'category 1'
+                    else 'Category 2' end as ageGroup,
+                    count(*)
+from customer group by region, ageGroup
+order by region, count desc;
 
 ```
