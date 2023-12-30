@@ -36,6 +36,7 @@
 select * from customers;
 select * from product;
 select * from sales;
+
 /* for marketing campaign, team want to have # of customer who belong to the below three categories in all regions:
 1. less than 36 years old
 2. Between 36 to 54 years
