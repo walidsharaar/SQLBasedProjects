@@ -32,5 +32,8 @@
 
 
 ```
-
+-- first let's check tables' data
+select * from customers;
+select * from product;
+select * from sales;
 ```
