@@ -1,5 +1,6 @@
 ## fundamental
 
 ```
---create database 
+--create database
+
 ```
