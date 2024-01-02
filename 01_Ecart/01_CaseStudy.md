@@ -49,4 +49,20 @@ select region, case when age > 54 then 'category 3'
 from customer group by region, ageGroup
 order by region, count desc;
 
+/* for supply chain manager, team is facing issues in managing the inventoru in
+the south and east warehouse. They want to know :
+1. Top 5 selling products in east region
+2. 5 least selling products in south region
+*/
+
+select c.product_id, d.product_name, c.total_q_sold
+from (select e.product_id, sum(e.quantity) as total_q_sold from (
+select a.*, b.region
+from sales as a
+left join customer as b
+on a.customer_id=b.customer_id) as e where e.region='east'
+group by e.product_id) as c
+order by total_q_sold desc
+limit 5;
+
 ```
