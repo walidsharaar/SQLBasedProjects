@@ -54,7 +54,7 @@ the south and east warehouse. They want to know :
 1. Top 5 selling products in east region
 2. 5 least selling products in south region
 */
-
+-- 1. top selling products
 select c.product_id, d.product_name, c.total_q_sold
 from (select e.product_id, sum(e.quantity) as total_q_sold from (
 select a.*, b.region
@@ -65,4 +65,12 @@ group by e.product_id) as c
 order by total_q_sold desc
 limit 5;
 
+-- 2. least selling product
+select c.product_id, d.product_name, c.total_q_sold
+from ( select e.product_id, sum(e.quantity) as total_q_sold from
+( select a.*, b.region from sales as a
+left join customer as b on a.customer_id= b.customer_id) as e
+where e.region='south' group by e.product_id) as c
+on c.product_id = d.product_id
+order by totat_q_sold asc
 ```
