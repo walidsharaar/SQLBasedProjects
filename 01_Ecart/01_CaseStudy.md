@@ -73,4 +73,5 @@ left join customer as b on a.customer_id= b.customer_id) as e
 where e.region='south' group by e.product_id) as c
 on c.product_id = d.product_id
 order by totat_q_sold asc
+limit 5;
 ```
