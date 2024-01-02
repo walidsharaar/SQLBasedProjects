@@ -83,4 +83,9 @@ Finance Manager: Please provide me the below data:
 
 --1.
 select sum(discount*sales) as total_discount from sales;
+--2.
+select product_id, sum(discount*sales) as discount, (sum(sales)-sum(discount*sales)) as revenue,
+sum(discount*sales)/(sum(sales))
+group by product_id
+order by ratio desc;
 ```
