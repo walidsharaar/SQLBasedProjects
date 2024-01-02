@@ -82,5 +82,5 @@ Finance Manager: Please provide me the below data:
 */
 
 --1.
-
+select sum(discount*sales) as total_discount from sales;
 ```
