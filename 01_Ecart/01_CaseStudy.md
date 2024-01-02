@@ -74,4 +74,13 @@ where e.region='south' group by e.product_id) as c
 on c.product_id = d.product_id
 order by totat_q_sold asc
 limit 5;
+
+/*
+Finance Manager: Please provide me the below data:
+1. total revenue loss due to the discount
+2. total revenue and discount for each product
+*/
+
+--1.
+
 ```
