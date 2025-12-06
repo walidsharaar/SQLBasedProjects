@@ -448,7 +448,94 @@ where t1.pizza_id = 1
 order by order_id
 `````
 6.  **What is the total quantity of each ingredient used in all delivered pizzas sorted by most frequent first?**
-
+   
+```` WITH cte_cleaned_customer_orders AS (
+SELECT
+  *,
+  ROW_NUMBER() OVER () AS original_row_number
+FROM 
+	clean_customer_orders
+),
+-- split the toppings using our previous solution
+cte_regular_toppings AS (
+  SELECT
+  	pizza_id,
+    	REGEXP_SPLIT_TO_TABLE(toppings, '[,\s]+')::INTEGER AS topping_id
+  FROM 
+  	pizza_runner.pizza_recipes
+),
+-- now we can should left join our regular toppings with all pizzas orders
+cte_base_toppings AS (
+  SELECT
+  	t1.order_id,
+      t1.customer_id,
+      t1.pizza_id,
+      t1.order_time,
+      t1.original_row_number,
+      t2.topping_id
+  FROM 
+  	cte_cleaned_customer_orders AS t1
+  LEFT JOIN 
+  	cte_regular_toppings AS t2
+  ON 
+  	t1.pizza_id = t2.pizza_id
+),
+-- now we can generate CTEs for exclusions and extras by the original row number
+cte_exclusions AS (
+  SELECT
+  	order_id,
+  	customer_id,
+  	pizza_id,
+  	order_time,
+  	original_row_number,
+  	REGEXP_SPLIT_TO_TABLE(exclusions, '[,\s]+')::INTEGER AS topping_id
+	FROM 
+		cte_cleaned_customer_orders
+	WHERE 
+		exclusions IS NOT NULL
+),
+cte_extras AS (
+  SELECT
+  	order_id,
+  	customer_id,
+  	pizza_id,
+  	order_time,
+  	original_row_number,
+  	REGEXP_SPLIT_TO_TABLE(extras, '[,\s]+')::INTEGER AS topping_id
+	FROM 
+		cte_cleaned_customer_orders
+	WHERE 
+		extras IS NOT NULL
+),
+-- now we can perform an except and a union all on the respective CTEs
+cte_combined_orders AS (
+  SELECT * 
+  FROM 
+  	cte_base_toppings
+	EXCEPT
+	SELECT * 
+	FROM 
+		cte_exclusions
+	UNION ALL
+	SELECT * 
+	FROM 
+		cte_extras
+)
+-- perform aggregation on topping_id and join to get topping names
+SELECT
+	t2.topping_name,
+	COUNT(*) AS topping_count
+FROM 
+  cte_combined_orders AS t1
+JOIN 
+  pizza_runner.pizza_toppings AS t2
+ON 
+  t1.topping_id = t2.topping_id
+GROUP BY 
+  t2.topping_name
+ORDER BY 
+  topping_count DESC;
+````
 
 ## D. Pricing and Ratings
 
@@ -579,4 +666,38 @@ from table1
 ## E. Bonus Questions
 
 1.  **If Danny wants to expand his range of pizzas - how would this impact the existing data design? Write an `INSERT` statement to demonstrate what would happen if a new Supreme pizza with all the toppings was added to the Pizza Runner menu.**
+````
+DROP TABLE IF EXISTS temp_pizza_names;
+CREATE TEMP TABLE temp_pizza_names AS (
+  SELECT *
+	FROM
+		pizza_runner.pizza_names
+);
 
+INSERT INTO temp_pizza_names
+VALUES
+(3, 'Supreme');
+
+
+DROP TABLE IF EXISTS temp_pizza_recipes;
+CREATE TABLE temp_pizza_recipes AS (
+  SELECT *
+	FROM
+		pizza_runner.pizza_recipes
+);
+
+INSERT INTO temp_pizza_recipes
+VALUES
+(3, '1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12');
+
+SELECT
+  t1.pizza_id,
+  t1.pizza_name,
+  t2.toppings
+FROM 
+  temp_pizza_names AS t1
+JOIN
+  temp_pizza_recipes AS t2
+ON
+  t1.pizza_id = t2.pizza_id;
+  ````
