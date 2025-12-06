@@ -305,9 +305,61 @@ GROUP BY runner_id;
 
 1.  **What are the standard ingredients for each pizza?**
 
+````sql
+with table1 as 
+(
+select 
+	unnest(string_to_array(toppings,', '))::numeric as recipes_id,
+	pr.pizza_id,
+	pizza_name
+from pizza_recipes as pr
+left join pizza_names as pn
+ON pn.pizza_id = pr.pizza_id
+)
+select pizza_name,
+	   pt.topping_name		 
+from table1 as t1
+left join pizza_toppings as pt
+ON t1.recipes_id = pt.topping_id
+order by pizza_id
+`````
+
 2.  **What was the most commonly added extra?**
 
+````sql
+with table1 as 
+(
+select order_id,
+	   unnest(string_to_array(extras,', '))::numeric as extras_id
+from customer_orders as co
+where extras is not null
+)
+select count(order_id),
+	   pt.topping_name
+from table1 as t1
+left join pizza_toppings as pt
+ON pt.topping_id = t1.extras_id
+group by 2
+order by 1 desc
+`````
+
 3.  **What was the most common exclusion?**
+
+````sql
+with table1 as 
+(
+select order_id,
+	   unnest(string_to_array(exclusions, ', '))::numeric as exclusions_id
+from customer_orders as co
+)
+select count(exclusions_id) as count_exclusions,
+	   topping_name
+from table1 as t1
+left join pizza_toppings as pt
+ON pt.topping_id = t1.exclusions_id
+group by 2
+order by 1 desc
+`````
 
 4.  **Generate an order item for each record in the `customers_orders` table in the format of one of the following:**
     - Meat Lovers
@@ -315,19 +367,161 @@ GROUP BY runner_id;
     - Meat Lovers - Extra Bacon
     - Meat Lovers - Exclude Cheese, Bacon - Extra Mushroom, Peppers
 
-  
+  ````sql
+with table1 as 
+(
+select customer_id,
+	   order_id,
+	   pizza_id,
+	   unnest(string_to_array(exclusions, ', '))::numeric as exclusions_id,
+	   unnest(string_to_array(extras, ', '))::numeric as extras_id
+from customer_orders as co
+),
+table2 as 
+(
+	with table22 as
+	(
+	select pizza_id ,
+		   unnest(string_to_array(toppings,', ')) as topping_id
+	from pizza_recipes as pr
+	)
+	select t22.topping_id,
+		   pt.topping_name,
+		   pizza_id
+	from table22 as t22
+	left join pizza_toppings as pt
+	ON pt.topping_id = t22.topping_id::numeric
+)
+select DISTINCT
+  t1.order_id,
+  CASE
+    WHEN t1.exclusions_id = t2.topping_id::numeric THEN 'Meatlovers - exc '||t1.exclusions_id
+    WHEN t1.extras_id = t2.topping_id::numeric THEN 'Meatlover - ext 2x '||t1.extras_id
+	else 'non exc or ext'
+  END AS topping_segment
+from table1 as t1
+left join table2 as t2
+ON t1.pizza_id = t2.pizza_id
+where t1.pizza_id = 1
+order by order_id
+`````
+
 5.  **Generate an alphabetically ordered comma-separated ingredient list for each pizza order from the `customer_orders` table and add a `2x` in front of any relevant ingredients.**
     - *For example: "Meat Lovers: 2xBacon, Beef, ... , Salami"*
 
+````sql
+with table1 as 
+(
+select customer_id,
+	   order_id,
+	   pizza_id,
+	   unnest(string_to_array(exclusions, ', '))::numeric as exclusions_id,
+	   unnest(string_to_array(extras, ', '))::numeric as extras_id
+from customer_orders as co
+),
+table2 as 
+(
+	with table22 as
+	(
+	select pizza_id ,
+		   unnest(string_to_array(toppings,', ')) as topping_id
+	from pizza_recipes as pr
+	)
+	select t22.topping_id,
+		   pt.topping_name,
+		   pizza_id
+	from table22 as t22
+	left join pizza_toppings as pt
+	ON pt.topping_id = t22.topping_id::numeric
+)
+select DISTINCT
+  t1.order_id,
+  CASE
+    WHEN t1.exclusions_id = t2.topping_id::numeric THEN 'Meatlovers - exc '||t1.exclusions_id
+    WHEN t1.extras_id = t2.topping_id::numeric THEN 'Meatlover - ext 2x '||t1.extras_id
+	else 'non exc or ext'
+  END AS topping_segment
+from table1 as t1
+left join table2 as t2
+ON t1.pizza_id = t2.pizza_id
+where t1.pizza_id = 1
+order by order_id
+`````
 6.  **What is the total quantity of each ingredient used in all delivered pizzas sorted by most frequent first?**
+
 
 ## D. Pricing and Ratings
 
 1.  **If a Meat Lovers pizza costs $12 and a Vegetarian pizza costs $10 and there were no charges for changes - how much money has Pizza Runner made so far if there are no delivery fees?**
 
+````sql
+with meatlovers as
+		(
+select 
+	 count(co.order_id) as order_count
+from customer_orders as co
+left join runner_orders as ro
+ON ro.order_id = co.order_id
+where pizza_id = 1 and cancellation is null
+		),
+vegetarian as 
+		(
+select 
+	count(co.order_id) as order_count
+from customer_orders as co
+left join runner_orders as ro
+ON ro.order_id = co.order_id
+where pizza_id = 2 and cancellation is null
+		)
+select concat((m.order_count*12+v.order_count*10),'$') as total_cost
+from meatlovers as m
+cross join vegetarian as v
+`````
+
 2.  **What if there was an additional $1 charge for any pizza extras? Add cheese is $1 extra.**
 
+````sql
+with t1 as 
+(
+    select *,
+           length(extras) - length(replace(extras, ',', '')) + 1 as topping_count
+    from customer_orders
+    inner join pizza_names using (pizza_id)
+    inner join runner_orders using (order_id)
+    where cancellation is null
+    order by order_id
+),
+
+t2 as 
+(
+select sum(case when pizza_id = 1 then 12 else 10 end) as pizza_revenue,
+       sum(topping_count) as topping_revenue
+from t1
+)
+select concat('$', topping_revenue + pizza_revenue) as total_revenue
+from t2;
+`````
+
 3.  **The Pizza Runner team now wants to add an additional ratings system that allows customers to rate their runner. How would you design an additional table for this new dataset? Generate a schema for this new table and insert your own data for ratings for each successful customer order between 1 to 5.**
+
+````sql
+CREATE TABLE runner_rating (order_id INTEGER, 
+							rating INTEGER, 
+							review TEXT)
+-- rating point 1-5
+-- Order 6 and 9 were cancelled
+INSERT INTO runner_rating
+VALUES ('1', '1'),
+       ('2', '1'),
+       ('3', '4'),
+       ('4', '1'),
+       ('5', '2'),
+       ('7', '5'),
+       ('8', '2'),
+       ('10', '5')
+
+select * from runner_rating
+`````
 
 4.  **Using your newly generated table - can you join all of the information together to form a table which has the following information for successful deliveries?**
     - `customer_id`
@@ -341,9 +535,46 @@ GROUP BY runner_id;
     - `Average speed`
     - `Total number of pizzas`
 
+````sql
+select
+		co.customer_id,
+		co.order_id,
+		ro.order_id,
+		rr.rating,
+		co.order_time,
+		ro.pickup_time,
+	    EXTRACT(minute FROM AGE(ro.pickup_time::timestamp, co.order_time::timestamp))::numeric AS delivery_duration,
+		ro.duration,
+		round(ro.distance::numeric*60/ro.duration::numeric,2) as avg_speed,
+		count(co.order_id) as order_count
+from customer_orders as co
+left join pizza_names as pn
+ON pn.pizza_id= co.pizza_id
+left join runner_orders as ro
+ON ro.order_id = co.order_id
+left join runner_rating as rr
+ON rr.order_id = ro.order_id
+where ro.cancellation is null
+group by 1,2,3,4,5,6,7,8,9
+order by customer_id
+`````
 
 5.  **If a Meat Lovers pizza was $12 and Vegetarian $10 fixed prices with no cost for extras and each runner is paid $0.30 per kilometer traveled - how much money does Pizza Runner have left over after these deliveries?**
 
+````sql
+with table1 as 
+(
+select  sum(case 
+		when pizza_id = 1 then 12 else 10 end) as total_cost,
+		round(sum(distance::numeric)*0.30,2) as sum_distance
+from customer_orders as co
+left join runner_orders as ro
+ON ro.order_id = co.order_id
+where cancellation is null
+)
+select total_cost-sum_distance as runner_orders_cost
+from table1 
+`````
 
 ## E. Bonus Questions
 
