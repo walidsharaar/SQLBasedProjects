@@ -178,3 +178,15 @@ GROUP BY shift
 ORDER BY total_orders DESC;
 
 ```
+
+## What We Found
+- Who our customers are: We have customers of all ages, and they buy things mostly from categories like Clothing and Beauty.
+- Big spenders: Some individual purchases were over 1000, so there are people buying premium items.
+- When sales go up and down: Looking at sales month by month shows us which times of year are busiest.
+- What we learned about customers: We figured out which customers spend the most money and which product categories are most popular.
+
+## Reports
+- Sales summary: A simple overview of total sales, customer age groups, and how each product category performed.
+- Trend analysis: A closer look at how sales change from month to month and between morning, afternoon, and evening shifts.
+- Customer insights: A report showing our top spenders and how many unique customers bought from each category.
+
